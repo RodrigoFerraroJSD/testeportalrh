@@ -39,6 +39,8 @@
   function setTheme(theme){
     document.documentElement.dataset.theme=theme;
     localStorage.setItem("rhconnect-theme",theme);
+    $(".theme-toggle").forEach(b=>{b.setAttribute("aria-pressed",String(theme==="dark"));b.setAttribute("aria-label",theme==="dark"?"Ativar tema claro":"Ativar tema escuro")});
+    document.querySelector('meta[name="theme-color"]').content=theme==="dark"?"#11151d":"#f5f7fb";
   }
   function initTheme(){
     const saved=localStorage.getItem("rhconnect-theme");
@@ -61,7 +63,7 @@
     $("#main-nav").innerHTML=navGroups.map(group=>{
       const items=group.items.filter(item=>allowed.includes(item[0]));
       if(!items.length)return "";
-      return `<div class="nav-section">${group.label}</div>${items.map(([id,icon,label])=>`<button class="nav-item ${activeModule===id?"active":""}" data-module="${id}"><span class="nav-icon">${icon}</span>${label}${id==="solicitacoes"?'<span class="nav-count">2</span>':""}</button>`).join("")}`;
+      return `<div class="nav-section">${group.label}</div>${items.map(([id,icon,label])=>`<button class="nav-item ${activeModule===id?"active":""}" data-module="${id}" ${activeModule===id?'aria-current="page"':""}><span class="nav-icon" aria-hidden="true">${icon}</span>${label}${id==="solicitacoes"?'<span class="nav-count">2</span>':""}</button>`).join("")}`;
     }).join("");
   }
   function heading(title,description,actions=""){
@@ -116,15 +118,19 @@
     $("#breadcrumb-current").textContent=labels[id]||"Meu painel";
     $("#page-content").innerHTML=id==="dashboard"?dashboard():id==="perfil"?profilePage():modulePage(id);
     $("#page-content").classList.remove("page-content");void $("#page-content").offsetWidth;$("#page-content").classList.add("page-content");
-    $("#sidebar").classList.remove("open");
+    setMenu(false);
   }
+  let modalReturnFocus=null;
   function openModal(title,subtitle,body,submitText="Salvar",onSubmit=null){
-    $("#modal-root").innerHTML=`<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true"><div class="modal-header"><div><h2>${title}</h2><p>${subtitle}</p></div><button class="icon-button" data-close-modal>×</button></div>${body}<div class="modal-actions"><button class="small-button" data-close-modal>Cancelar</button><button class="small-button primary" id="modal-submit">${submitText}</button></div></section></div>`;
+    modalReturnFocus=document.activeElement;document.body.classList.add("modal-open");
+    $("#modal-root").innerHTML=`<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-header"><div><h2 id="modal-title">${title}</h2><p>${subtitle}</p></div><button class="icon-button" aria-label="Fechar janela" data-close-modal>×</button></div>${body}<div class="modal-actions"><button class="small-button" data-close-modal>Cancelar</button><button class="small-button primary" id="modal-submit">${submitText}</button></div></section></div>`;
     $$("[data-close-modal]").forEach(b=>b.addEventListener("click",closeModal));
     $(".modal-backdrop").addEventListener("click",e=>{if(e.target.classList.contains("modal-backdrop"))closeModal()});
     $("#modal-submit").addEventListener("click",()=>onSubmit&&onSubmit());
+    ($(".modal input")||$(".modal [data-close-modal]")).focus();
+    $(".modal form").forEach(form=>form.addEventListener("submit",e=>{e.preventDefault();if(!$("#modal-submit").disabled)$("#modal-submit").click()}));
   }
-  function closeModal(){$("#modal-root").innerHTML=""}
+  function closeModal(){$("#modal-root").innerHTML="";document.body.classList.remove("modal-open");if(modalReturnFocus?.isConnected)modalReturnFocus.focus();modalReturnFocus=null;}
   function newEmployee(){
     openModal("Cadastrar funcionário","Preencha os dados para adicionar uma pessoa ao diretório.",`<form id="employee-form" class="modal-form"><label class="field-label wide">Nome completo<input name="name" placeholder="Nome do funcionário" required></label><label class="field-label wide">E-mail corporativo<input name="email" type="email" placeholder="nome@empresa.com.br" required></label><label class="field-label">Departamento<input name="department" placeholder="Ex.: Operações" required></label><label class="field-label">Cargo<input name="title" placeholder="Ex.: Analista" required></label><label class="field-label">Perfil de acesso<select name="role"><option>Colaborador</option><option>RH</option><option>Administrador</option></select></label><label class="field-label">Situação<select name="status"><option>Ativo</option><option>Pendente</option></select></label></form>`,"Cadastrar",async()=>{
       const form=$("#employee-form");if(!form.reportValidity())return;const f=new FormData(form);const name=f.get("name").trim(),email=f.get("email").trim();
@@ -147,7 +153,7 @@
   $("#register-link").addEventListener("click",registerRequest);
   $("#forgot-link").addEventListener("click",()=>openModal("Recuperar senha","Informe seu e-mail corporativo para receber as instruções.",`<form id="recover-form"><label class="field-label">E-mail corporativo<input name="email" type="email" required placeholder="voce@empresa.com.br"></label></form>`,"Enviar instruções",()=>{if(!$("#recover-form").reportValidity())return;closeModal();toast("Se o e-mail estiver cadastrado, você receberá as instruções.")}));
   $$(".theme-toggle").forEach(b=>b.addEventListener("click",()=>setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")));
-  document.addEventListener("input",e=>{if(e.target.id==="employee-search"){const q=e.target.value.toLowerCase();$("#employee-rows").innerHTML=employeeRows(employees.filter(x=>(x.name+x.email+x.department+x.role).toLowerCase().includes(q)))}});
+  document.addEventListener("input",e=>{if(e.target.id==="employee-search"){const q=e.target.value.toLowerCase();const rows=employees.filter(x=>(x.name+x.email+x.department+x.role).toLowerCase().includes(q));$("#employee-rows").innerHTML=rows.length?employeeRows(rows):'<tr><td colspan="5"><div class="empty-state"><b>Nenhum funcionário encontrado</b><p>Tente outro termo de busca.</p></div></td></tr>'}});
   document.addEventListener("click",e=>{
     const nav=e.target.closest("[data-module]");if(nav&&currentUser){navigate(nav.dataset.module);return}
     const action=e.target.closest("[data-action]");if(!action)return;
@@ -157,12 +163,20 @@
     if(action.dataset.action==="edit-profile")toast("Solicitação de alteração enviada ao RH.");
     if(action.dataset.action==="view-employee"){const emp=employees.find(x=>x.email===action.dataset.email);if(emp)openModal(esc(emp.name),"Perfil do funcionário",`<div class="grid profile-fields">${[["E-mail",emp.email],["Cargo",emp.title],["Departamento",emp.department],["Perfil",emp.role],["Situação",emp.status]].map(x=>`<div class="info-field"><small>${x[0]}</small><b>${esc(x[1])}</b></div>`).join("")}</div>`,"Fechar",closeModal)}
   });
-  $("#mobile-menu").addEventListener("click",()=>$("#sidebar").classList.toggle("open"));
+  function setMenu(open){$("#sidebar").classList.toggle("open",open);$("#mobile-menu").setAttribute("aria-expanded",String(open));$("#mobile-menu").setAttribute("aria-label",open?"Fechar menu":"Abrir menu");}
+  $("#mobile-menu").addEventListener("click",()=>setMenu(!$("#sidebar").classList.contains("open")));
+  $("#sidebar-overlay").addEventListener("click",()=>{setMenu(false);$("#mobile-menu").focus()});
+  window.matchMedia("(min-width:961px)").addEventListener("change",()=>setMenu(false));
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"){if($(".modal"))closeModal();else if($("#sidebar").classList.contains("open")){setMenu(false);$("#mobile-menu").focus();}}
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"&&currentUser&&!$(".modal")){e.preventDefault();$("#global-search").focus();}
+    if(e.key==="Tab"&&$(".modal")){const items=$("button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex='0']",$(".modal"));if(!items.length)return;const first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}
+  });
   $("#profile-menu").addEventListener("click",()=>navigate("perfil"));
   $("#notifications-button").addEventListener("click",()=>toast("Você está em dia com suas notificações."));
-  $("#global-search").addEventListener("keydown",e=>{if(e.key==="Enter"){const q=e.target.value.toLowerCase();const match=Object.entries(modules).find(([id,m])=>m[1].toLowerCase().includes(q));if(match)navigate(match[0]);else if("painel dashboard".includes(q))navigate("dashboard");else toast("Nenhum módulo encontrado para esta busca.","error")}});
+  $("#global-search").addEventListener("keydown",e=>{if(e.key==="Enter"){const q=e.target.value.trim().toLowerCase();if(!q)return;const match=Object.entries(modules).find(([id,m])=>permissions[currentUser.role].includes(id)&&m[1].toLowerCase().includes(q));if(match)navigate(match[0]);else if("painel dashboard".includes(q))navigate("dashboard");else toast("Nenhum módulo encontrado para esta busca.","error")}});
   $("#logout").addEventListener("click",()=>{currentUser=null;localStorage.removeItem("rh-demo-role");showAuth();});
-  $(".password-toggle").addEventListener("click",()=>{const p=$("#login-password");p.type=p.type==="password"?"text":"password";});
+  $(".password-toggle").addEventListener("click",()=>{const p=$("#login-password");p.type=p.type==="password"?"text":"password";$(".password-toggle").setAttribute("aria-label",p.type==="password"?"Mostrar senha":"Ocultar senha");$(".password-toggle").setAttribute("aria-pressed",String(p.type==="text"));});
   initTheme();
   const remembered=data.accounts.find(a=>a.role===localStorage.getItem("rh-demo-role"));if(remembered){$("#remember-login").checked=true;login(remembered.email,remembered.password);}
 })();

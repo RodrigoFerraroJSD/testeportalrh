@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.468.0/lucide.min.css">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -75,7 +74,7 @@
         <div class="brand-symbol">RC</div><div><strong>RH CONNECT</strong><span>PEOPLE EXPERIENCE</span></div>
       </div>
       <div class="workspace-label">ESPAÇO DE TRABALHO</div>
-      <nav id="main-nav" class="main-nav"></nav>
+      <nav id="main-nav" class="main-nav" aria-label="Navegação principal"></nav>
       <div class="sidebar-bottom">
         <div class="help-card"><div class="help-icon">✳</div><b>Precisa de ajuda?</b><p>Estamos aqui para apoiar você.</p><button type="button" data-module="solicitacoes">Acessar suporte <span>→</span></button></div>
         <button class="profile-button" id="profile-menu">
@@ -83,22 +82,23 @@
         </button>
       </div>
     </aside>
+    <button class="sidebar-overlay" id="sidebar-overlay" aria-label="Fechar menu" tabindex="-1"></button>
 
     <section class="main-area">
       <header class="topbar">
         <div class="topbar-left">
-          <button class="icon-button mobile-menu" id="mobile-menu" aria-label="Abrir menu">☰</button>
+          <button class="icon-button mobile-menu" id="mobile-menu" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">☰</button>
           <div class="breadcrumb"><span>RH CONNECT</span><b>/</b><strong id="breadcrumb-current">Meu painel</strong></div>
         </div>
         <div class="topbar-actions">
-          <div class="search-box"><span>⌕</span><input id="global-search" type="search" placeholder="Buscar no portal..."><kbd>⌘ K</kbd></div>
+          <div class="search-box"><span>⌕</span><input id="global-search" aria-label="Buscar no portal" type="search" placeholder="Buscar no portal..."><kbd>⌘ K</kbd></div>
           <button class="icon-button theme-toggle" aria-label="Alternar tema" data-theme-toggle>◐</button>
           <button class="icon-button notification-button" id="notifications-button" aria-label="Notificações">♧<i></i></button>
           <div class="topbar-avatar avatar avatar-blue" id="topbar-avatar">MC</div><button class="icon-button" id="logout" aria-label="Sair" title="Sair">↪</button>
         </div>
       </header>
       <div class="content-wrap">
-        <div id="page-content" class="page-content"></div>
+        <div id="page-content" class="page-content" tabindex="-1"></div>
         <footer class="app-footer"><span>© 2026 RH CONNECT</span><span>Feito para conectar pessoas <b>♥</b></span></footer>
       </div>
     </section>
