@@ -4,6 +4,7 @@
   const data = window.RHConnectData;
   let currentUser = null;
   let activeModule = "dashboard";
+  let dashboardDepartment = "";
   let employees = [...data.employees];
   const esc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let dataLoaded=false;
@@ -51,6 +52,7 @@
   function initials(name){return name.split(" ").slice(0,2).map(x=>x[0]).join("").toUpperCase()}
   function showAuth(){ $("#auth-screen").classList.remove("hidden");$("#app-screen").classList.add("hidden"); }
   function showApp(){
+    dashboardDepartment="";
     $("#auth-screen").classList.add("hidden");$("#app-screen").classList.remove("hidden");
     $("#profile-name").textContent=currentUser.name;$("#profile-role").textContent=roleNames[currentUser.role]||currentUser.role;
     $("#profile-avatar").textContent=currentUser.initials||initials(currentUser.name);
@@ -83,7 +85,7 @@
     const admin=currentUser.role!=="colaborador";
     const title=currentUser.role==="colaborador"?"Olá, "+currentUser.name.split(" ")[0]+"!":"Olá, "+currentUser.name.split(" ")[0]+".";
     return `${`<div class="welcome-card"><div class="welcome-copy"><span class="eyebrow">SEU ESPAÇO, SUAS CONEXÕES</span><h2>${title}</h2><p>Que bom ter você por aqui. Veja o que está acontecendo hoje.</p></div><div class="welcome-date"><strong>${new Intl.DateTimeFormat("pt-BR",{weekday:"long",day:"2-digit",month:"long"}).format(new Date())}</strong>Um ótimo dia para fazer acontecer ✨</div></div>`}
-      <div class="grid stats-grid">${admin?stat("Pessoas na organização",employees.length,"+ 2 neste mês","♙"):stat("Meu vale alimentação","R$ 680,00","Disponível neste mês","◇")}${admin?stat("Solicitações abertas","12","4 aguardando análise","✉",false):stat("Solicitações em andamento","2","Acompanhe suas solicitações","✉",false)}${admin?stat("Férias programadas","8","Próximos 30 dias","▦"):stat("Dias de férias disponíveis","24 dias","Consulte sua situação","▦")}${admin?stat("Comunicados ativos","6","2 publicados nesta semana","▧"):stat("Comunicados novos","3","Confira as novidades","▧")}</div>
+      ${admin?window.RHEnterprise.management(employees,dashboardDepartment):window.RHEnterprise.employee()}
       <div class="grid dashboard-columns"><div>
         <section class="panel"><div class="panel-header"><div><h3>Atividade recente</h3><p>As últimas atualizações do seu espaço</p></div><button class="link-button" data-module="comunicados">Ver tudo →</button></div><div class="activity-list">${activityList()}</div></section>
         <section class="panel"><div class="panel-header"><div><h3>Acesso rápido</h3><p>Encontre o que você precisa em poucos cliques</p></div></div><div class="grid quick-grid">${[["holerites","▤","Meus holerites","Documentos mensais"],["beneficios","◇","Benefícios","Informações do mês"],["ponto","◷","Ponto web","Minha jornada"],["solicitacoes","✉","Solicitações","Fale com o RH"]].map(x=>`<button class="quick-card" data-module="${x[0]}"><span>${x[1]}</span><b>${x[2]}</b><small>${x[3]}</small></button>`).join("")}</div></section>
@@ -118,6 +120,7 @@
     const labels={dashboard:"Meu painel",perfil:"Meu perfil",...Object.fromEntries(Object.entries(modules).map(([k,v])=>[k,v[1]]))};
     $("#breadcrumb-current").textContent=labels[id]||"Meu painel";
     $("#page-content").innerHTML=id==="dashboard"?dashboard():id==="perfil"?profilePage():modulePage(id);
+    if(id==="dashboard")window.RHEnterprise.bind($("#page-content"),employees,value=>{dashboardDepartment=value});
     $("#page-content").classList.remove("page-content");void $("#page-content").offsetWidth;$("#page-content").classList.add("page-content");
     setMenu(false);
   }
