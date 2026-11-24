@@ -6,8 +6,9 @@
   let activeModule = "dashboard";
   let employees = [...data.employees];
   const esc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let dataLoaded=false;
   const ready = window.RHStore.load().then(rows=>{employees=[...data.employees,...rows];}).catch(e=>{console.error(e);toast('Não foi possível carregar os dados salvos.','error');throw e;});
-  ready.catch(()=>{});
+  ready.finally(()=>{dataLoaded=true}).catch(()=>{});
   const roleNames = {colaborador:"Colaboradora",rh:"Equipe de RH",admin:"Administrador"};
   const navGroups = [
     {label:"VISÃO GERAL",items:[["dashboard","⌂","Meu painel"]]},
@@ -33,13 +34,13 @@
   };
 
   function toast(message,type="success"){
-    const el=document.createElement("div");el.className=`toast ${type}`;el.textContent=message;$("#toast-region").append(el);
-    setTimeout(()=>el.remove(),3600);
+    const el=document.createElement("div");el.className=`toast ${type}`;el.setAttribute("role",type==="error"?"alert":"status");const symbol=document.createElement("span");symbol.className="toast-symbol";symbol.innerHTML=window.RHDesign.icon(type==="error"?"alert":"check");const copy=document.createElement("span");copy.textContent=message;el.append(symbol,copy);$("#toast-region").append(el);
+    setTimeout(()=>el.remove(),5000);
   }
   function setTheme(theme){
     document.documentElement.dataset.theme=theme;
     localStorage.setItem("rhconnect-theme",theme);
-    $(".theme-toggle").forEach(b=>{b.setAttribute("aria-pressed",String(theme==="dark"));b.setAttribute("aria-label",theme==="dark"?"Ativar tema claro":"Ativar tema escuro")});
+    $(".theme-toggle").forEach(b=>{b.innerHTML=window.RHDesign.icon(theme==="dark"?"sun":"moon");b.setAttribute("aria-pressed",String(theme==="dark"));b.setAttribute("aria-label",theme==="dark"?"Ativar tema claro":"Ativar tema escuro")});
     document.querySelector('meta[name="theme-color"]').content=theme==="dark"?"#11151d":"#f5f7fb";
   }
   function initTheme(){
@@ -136,14 +137,14 @@
       const form=$("#employee-form");if(!form.reportValidity())return;const f=new FormData(form);const name=f.get("name").trim(),email=f.get("email").trim();
       if(employees.some(e=>e.email.toLowerCase()===email.toLowerCase())){toast("Já existe um funcionário com este e-mail.","error");return}
       const record={name,email,department:f.get("department"),title:f.get("title"),role:f.get("role"),status:f.get("status"),initials:initials(name)};
-      const button=$("#modal-submit");button.disabled=true;
-      try {await ready; if(employees.some(e=>e.email.toLowerCase()===email.toLowerCase())) throw new Error('E-mail duplicado'); await window.RHStore.add(record);employees.push(record);closeModal();navigate(activeModule);toast(window.RHStore.enabled?"Cadastro salvo no Firebase.":"Cadastro salvo neste navegador.");} catch(e){console.error(e);toast("Não foi possível salvar o cadastro.","error");button.disabled=false;}
+      const button=$("#modal-submit");button.disabled=true;button.setAttribute("aria-busy","true");
+      try {await ready; if(employees.some(e=>e.email.toLowerCase()===email.toLowerCase())) throw new Error('E-mail duplicado'); await window.RHStore.add(record);employees.push(record);closeModal();navigate(activeModule);toast(window.RHStore.enabled?"Cadastro salvo no Firebase.":"Cadastro salvo neste navegador.");} catch(e){console.error(e);toast("Não foi possível salvar o cadastro.","error");button.disabled=false;button.removeAttribute("aria-busy");}
     });
   }
   async function login(email,password){
     const account=data.accounts.find(a=>a.email.toLowerCase()===email.toLowerCase()&&a.password===password);
     if(!account){toast("E-mail ou senha inválidos. Confira os dados e tente novamente.","error");return}
-    await ready.catch(()=>{});currentUser={...account};if($("#remember-login").checked)localStorage.setItem("rh-demo-role",account.role);showApp();toast(`Bem-vindo(a), ${account.name.split(" ")[0]}!`);
+    currentUser={...account};if($("#remember-login").checked)localStorage.setItem("rh-demo-role",account.role);showApp();if(!dataLoaded){const page=$("#page-content");page.setAttribute("aria-busy","true");page.insertAdjacentHTML("afterbegin",'<div class="rc-loading" role="status"><span class="rc-spinner"></span> Sincronizando dados do portal…</div>');await ready.catch(()=>{});if(currentUser===null||currentUser.email!==account.email)return;page.removeAttribute("aria-busy");navigate(activeModule);}toast(`Bem-vindo(a), ${account.name.split(" ")[0]}!`);
   }
   function registerRequest(){
     openModal("Solicitar cadastro","Envie seus dados para uma futura validação da equipe de RH.",`<form id="request-form" class="modal-form"><label class="field-label wide">Nome completo<input name="name" required placeholder="Seu nome"></label><label class="field-label wide">E-mail corporativo<input name="email" type="email" required placeholder="voce@empresa.com.br"></label><label class="field-label wide">Departamento<input name="department" required placeholder="Seu departamento"></label></form>`,"Enviar solicitação",()=>{if(!$("#request-form").reportValidity())return;closeModal();toast("Solicitação de cadastro registrada nesta demonstração.")});
@@ -176,7 +177,7 @@
   $("#notifications-button").addEventListener("click",()=>toast("Você está em dia com suas notificações."));
   $("#global-search").addEventListener("keydown",e=>{if(e.key==="Enter"){const q=e.target.value.trim().toLowerCase();if(!q)return;const match=Object.entries(modules).find(([id,m])=>permissions[currentUser.role].includes(id)&&m[1].toLowerCase().includes(q));if(match)navigate(match[0]);else if("painel dashboard".includes(q))navigate("dashboard");else toast("Nenhum módulo encontrado para esta busca.","error")}});
   $("#logout").addEventListener("click",()=>{currentUser=null;localStorage.removeItem("rh-demo-role");showAuth();});
-  $(".password-toggle").addEventListener("click",()=>{const p=$("#login-password");p.type=p.type==="password"?"text":"password";$(".password-toggle").setAttribute("aria-label",p.type==="password"?"Mostrar senha":"Ocultar senha");$(".password-toggle").setAttribute("aria-pressed",String(p.type==="text"));});
+  $(".password-toggle").addEventListener("click",()=>{const p=$("#login-password");p.type=p.type==="password"?"text":"password";$(".password-toggle").setAttribute("aria-label",p.type==="password"?"Mostrar senha":"Ocultar senha");$(".password-toggle").setAttribute("aria-pressed",String(p.type==="text"));$(".password-toggle").innerHTML=window.RHDesign.icon(p.type==="text"?"eyeoff":"eye");});
   initTheme();
   const remembered=data.accounts.find(a=>a.role===localStorage.getItem("rh-demo-role"));if(remembered){$("#remember-login").checked=true;login(remembered.email,remembered.password);}
 })();
