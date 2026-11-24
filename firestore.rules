@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
  match /databases/{database}/documents {
   match /demoUsers/{uid}/employees/{id} {
-   allow read: if request.auth != null && request.auth.uid == uid;
+   allow read, delete: if request.auth != null && request.auth.uid == uid;
    allow create, update: if request.auth != null && request.auth.uid == uid
     && request.resource.data.keys().hasOnly(['name','email','department','title','role','status','initials'])
     && request.resource.data.keys().hasAll(['name','email','department','title','role','status','initials'])
@@ -11,7 +11,7 @@ service cloud.firestore {
     && request.resource.data.department is string && request.resource.data.department.size() <= 150
     && request.resource.data.title is string && request.resource.data.title.size() <= 150
     && request.resource.data.role in ['Colaborador','RH','Administrador']
-    && request.resource.data.status in ['Ativo','Pendente']
+    && request.resource.data.status in ['Ativo','Pendente','Inativo']
     && request.resource.data.initials is string && request.resource.data.initials.size() <= 10;
   }
  }

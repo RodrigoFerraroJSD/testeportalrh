@@ -49,7 +49,7 @@
     const preferred=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";
     setTheme(saved||preferred);
   }
-  function initials(name){return name.split(" ").slice(0,2).map(x=>x[0]).join("").toUpperCase()}
+  function initials(name){return name.trim().split(/\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase()}
   function showAuth(){ $("#auth-screen").classList.remove("hidden");$("#app-screen").classList.add("hidden"); }
   function showApp(){
     dashboardDepartment="";
@@ -95,7 +95,7 @@
   function modulePage(id){
     const [icon,title,desc]=modules[id];
     const action=(id==="funcionarios"||id==="usuarios")?`<button class="small-button primary" data-action="new-employee">＋ Novo funcionário</button>`:"";
-    if(id==="funcionarios"||id==="usuarios") return `${heading(title,desc,action)}<section class="panel"><div class="table-toolbar"><input class="table-search" id="employee-search" placeholder="Buscar funcionário..."><span class="muted-label">${employees.length} REGISTROS</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>FUNCIONÁRIO</th><th>DEPARTAMENTO</th><th>PERFIL</th><th>SITUAÇÃO</th><th>AÇÃO</th></tr></thead><tbody id="employee-rows">${employeeRows()}</tbody></table></div></section>`;
+    if(id==="funcionarios"||id==="usuarios") return heading(title,desc,action)+window.RHPeople.render(employees,data.employees,currentUser.role);
     if(id==="comunicados")return `${heading(title,desc)}<section class="panel">${announcements()}<button class="small-button" data-action="read-announcement">Marcar comunicados como lidos</button></section>`;
     const details={
       holerites:["Demonstrativos de pagamento","Outubro 2026","Setembro 2026","Agosto 2026"],
@@ -120,6 +120,7 @@
     const labels={dashboard:"Meu painel",perfil:"Meu perfil",...Object.fromEntries(Object.entries(modules).map(([k,v])=>[k,v[1]]))};
     $("#breadcrumb-current").textContent=labels[id]||"Meu painel";
     $("#page-content").innerHTML=id==="dashboard"?dashboard():id==="perfil"?profilePage():modulePage(id);
+    if(id==="funcionarios"||id==="usuarios")window.RHPeople.bind($("#page-content"),employees,data.employees,currentUser.role);
     if(id==="dashboard")window.RHEnterprise.bind($("#page-content"),employees,value=>{dashboardDepartment=value});
     window.RHMotion.enter($("#page-content"));
     if(id==="dashboard")window.RHMotion.syncFilter($("#page-content"));
@@ -137,13 +138,37 @@
     $(".modal form").forEach(form=>form.addEventListener("submit",e=>{e.preventDefault();if(!$("#modal-submit").disabled)$("#modal-submit").click()}));
   }
   function closeModal(){$("#modal-root").innerHTML="";document.body.classList.remove("modal-open");if(modalReturnFocus?.isConnected)modalReturnFocus.focus();modalReturnFocus=null;}
-  function newEmployee(){
-    openModal("Cadastrar funcionário","Preencha os dados para adicionar uma pessoa ao diretório.",`<form id="employee-form" class="modal-form"><label class="field-label wide">Nome completo<input name="name" placeholder="Nome do funcionário" required></label><label class="field-label wide">E-mail corporativo<input name="email" type="email" placeholder="nome@empresa.com.br" required></label><label class="field-label">Departamento<input name="department" placeholder="Ex.: Operações" required></label><label class="field-label">Cargo<input name="title" placeholder="Ex.: Analista" required></label><label class="field-label">Perfil de acesso<select name="role"><option>Colaborador</option><option>RH</option><option>Administrador</option></select></label><label class="field-label">Situação<select name="status"><option>Ativo</option><option>Pendente</option></select></label></form>`,"Cadastrar",async()=>{
-      const form=$("#employee-form");if(!form.reportValidity())return;const f=new FormData(form);const name=f.get("name").trim(),email=f.get("email").trim();
-      if(employees.some(e=>e.email.toLowerCase()===email.toLowerCase())){toast("Já existe um funcionário com este e-mail.","error");return}
-      const record={name,email,department:f.get("department"),title:f.get("title"),role:f.get("role"),status:f.get("status"),initials:initials(name)};
+  function canManage(){return currentUser && ["admin","rh"].includes(currentUser.role)}
+  function mutable(email){return !data.employees.some(r=>r.email.toLowerCase()===email.toLowerCase())}
+  function newEmployee(existing=null){
+    if(!canManage()||(existing&&!mutable(existing.email)))return;
+    const val=k=>esc(existing?.[k]||"");
+    const opts=(values,key)=>values.map(v=>'<option'+(existing?.[key]===v?' selected':'')+'>'+v+'</option>').join("");
+    const roles=currentUser.role==="admin"?["Colaborador","RH","Administrador"]:["Colaborador"];
+    if(existing&&!roles.includes(existing.role)){toast("Somente o administrador pode alterar este perfil.","error");return}
+    openModal(existing?"Editar funcionário":"Cadastrar funcionário","Use somente dados fictícios.",`<form id="employee-form" class="modal-form"><label class="field-label wide">Nome completo<input name="name" maxlength="150" value="${val("name")}" required></label><label class="field-label wide">E-mail corporativo<input name="email" type="email" maxlength="254" value="${val("email")}" ${existing?"readonly":""} required></label><label class="field-label">Departamento<input name="department" maxlength="150" value="${val("department")}" required></label><label class="field-label">Cargo<input name="title" maxlength="150" value="${val("title")}" required></label><label class="field-label">Perfil<select name="role">${opts(roles,"role")}</select></label><label class="field-label">Situação<select name="status">${opts(["Ativo","Pendente","Inativo"],"status")}</select></label></form>`,"Salvar",async()=>{
+      const form=$("#employee-form");if(!canManage()||!form.reportValidity())return;
+      const f=new FormData(form),name=f.get("name").trim(),email=f.get("email").trim().toLowerCase(),department=f.get("department").trim(),title=f.get("title").trim();
+      if(!name||!department||!title||!roles.includes(f.get("role"))){toast("Confira os campos obrigatórios.","error");return}
+      const record={name,email,department,title,role:f.get("role"),status:f.get("status"),initials:initials(name)};
       const button=$("#modal-submit");button.disabled=true;button.setAttribute("aria-busy","true");
-      try {await ready; if(employees.some(e=>e.email.toLowerCase()===email.toLowerCase())) throw new Error('E-mail duplicado'); await window.RHStore.add(record);employees.push(record);closeModal();navigate(activeModule);toast(window.RHStore.enabled?"Cadastro salvo no Firebase.":"Cadastro salvo neste navegador.");} catch(e){console.error(e);toast("Não foi possível salvar o cadastro.","error");button.disabled=false;button.removeAttribute("aria-busy");}
+      const actor=currentUser;
+      try{await ready;if(currentUser!==actor||!canManage())return;
+        const index=employees.findIndex(r=>r.email.toLowerCase()===email);
+        if(!existing&&index>=0){toast("E-mail já cadastrado.","error");return}
+        if(existing&&(index<0||!mutable(email)))throw Error("Registro indisponível");
+        await window.RHStore.add(record);if(index<0)employees.push(record);else employees[index]=record;
+        if(currentUser===actor){closeModal();navigate(activeModule);toast("Cadastro salvo com sucesso.")}
+      }catch(err){console.error(err);toast("Não foi possível salvar o cadastro.","error")}finally{if(button.isConnected){button.disabled=false;button.removeAttribute("aria-busy")}}
+    });
+  }
+  function deleteEmployee(emp){
+    if(currentUser?.role!=="admin"||!mutable(emp.email))return;
+    openModal("Excluir funcionário","Esta operação remove o registro demonstrativo.",'<p>Confirma a exclusão de <strong>'+esc(emp.name)+'</strong>?</p>',"Excluir",async()=>{
+      const button=$("#modal-submit"),actor=currentUser;if(actor?.role!=="admin"||!mutable(emp.email))return;
+      button.disabled=true;
+      try{await ready;if(currentUser!==actor)return;await window.RHStore.remove(emp.email);employees=employees.filter(r=>r.email.toLowerCase()!==emp.email.toLowerCase());if(currentUser===actor){closeModal();navigate(activeModule);toast("Registro excluído.")}}
+      catch(err){console.error(err);toast("Não foi possível excluir o registro.","error")}finally{if(button.isConnected)button.disabled=false}
     });
   }
   async function login(email,password){
@@ -157,17 +182,18 @@
   $("#login-form").addEventListener("submit",e=>{e.preventDefault();login($("#login-email").value.trim(),$("#login-password").value)});
   $$(".demo-account").forEach(b=>b.addEventListener("click",()=>{const a=data.accounts.find(x=>x.role===b.dataset.demo);$("#login-email").value=a.email;$("#login-password").value=a.password;login(a.email,a.password)}));
   $("#register-link").addEventListener("click",registerRequest);
-  $("#forgot-link").addEventListener("click",()=>openModal("Recuperar senha","Informe seu e-mail corporativo para receber as instruções.",`<form id="recover-form"><label class="field-label">E-mail corporativo<input name="email" type="email" required placeholder="voce@empresa.com.br"></label></form>`,"Enviar instruções",()=>{if(!$("#recover-form").reportValidity())return;closeModal();toast("Se o e-mail estiver cadastrado, você receberá as instruções.")}));
+  $("#forgot-link").addEventListener("click",()=>openModal("Recuperar senha","Informe seu e-mail corporativo para receber as instruções.",`<form id="recover-form"><label class="field-label">E-mail corporativo<input name="email" type="email" required placeholder="voce@empresa.com.br"></label></form>`,"Enviar instruções",()=>{if(!$("#recover-form").reportValidity())return;closeModal();toast("Recuperação de senha simulada. Nenhum e-mail foi enviado.")}));
   $$(".theme-toggle").forEach(b=>b.addEventListener("click",()=>setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark")));
   document.addEventListener("input",e=>{if(e.target.id==="employee-search"){const q=e.target.value.toLowerCase();const rows=employees.filter(x=>(x.name+x.email+x.department+x.role).toLowerCase().includes(q));$("#employee-rows").innerHTML=rows.length?employeeRows(rows):'<tr><td colspan="5"><div class="empty-state"><b>Nenhum funcionário encontrado</b><p>Tente outro termo de busca.</p></div></td></tr>'}});
   document.addEventListener("click",e=>{
     const nav=e.target.closest("[data-module]");if(nav&&currentUser){navigate(nav.dataset.module);return}
     const action=e.target.closest("[data-action]");if(!action)return;
     if(action.dataset.action==="new-employee")newEmployee();
+    if(["edit-employee","delete-employee"].includes(action.dataset.action)&&canManage()){const emp=employees.find(r=>r.email===action.dataset.email);if(emp){if(action.dataset.action==="edit-employee")newEmployee(emp);else deleteEmployee(emp)}}
     if(action.dataset.action==="module-action")toast("Ação demonstrativa registrada.");
     if(action.dataset.action==="read-announcement")toast("Comunicados marcados como lidos.");
-    if(action.dataset.action==="edit-profile")toast("Solicitação de alteração enviada ao RH.");
-    if(action.dataset.action==="view-employee"){const emp=employees.find(x=>x.email===action.dataset.email);if(emp)openModal(esc(emp.name),"Perfil do funcionário",`<div class="grid profile-fields">${[["E-mail",emp.email],["Cargo",emp.title],["Departamento",emp.department],["Perfil",emp.role],["Situação",emp.status]].map(x=>`<div class="info-field"><small>${x[0]}</small><b>${esc(x[1])}</b></div>`).join("")}</div>`,"Fechar",closeModal)}
+    if(action.dataset.action==="edit-profile")toast("Solicitação simulada. Nenhuma mensagem foi enviada.");
+    if(action.dataset.action==="view-employee"&&canManage()){const emp=employees.find(x=>x.email===action.dataset.email);if(emp)openModal(esc(emp.name),"Perfil do funcionário",`<div class="grid profile-fields">${[["E-mail",emp.email],["Cargo",emp.title],["Departamento",emp.department],["Perfil",emp.role],["Situação",emp.status]].map(x=>`<div class="info-field"><small>${x[0]}</small><b>${esc(x[1])}</b></div>`).join("")}</div>`,"Fechar",closeModal)}
   });
   function setMenu(open){$("#sidebar").classList.toggle("open",open);$("#mobile-menu").setAttribute("aria-expanded",String(open));$("#mobile-menu").setAttribute("aria-label",open?"Fechar menu":"Abrir menu");}
   $("#mobile-menu").addEventListener("click",()=>setMenu(!$("#sidebar").classList.contains("open")));
@@ -176,12 +202,12 @@
   document.addEventListener("keydown",e=>{
     if(e.key==="Escape"){if($(".modal"))closeModal();else if($("#sidebar").classList.contains("open")){setMenu(false);$("#mobile-menu").focus();}}
     if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"&&currentUser&&!$(".modal")){e.preventDefault();$("#global-search").focus();}
-    if(e.key==="Tab"&&$(".modal")){const items=$("button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex='0']",$(".modal"));if(!items.length)return;const first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}
+    if(e.key==="Tab"&&$(".modal")){const items=$$("button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex='0']",$(".modal"));if(!items.length)return;const first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}
   });
   $("#profile-menu").addEventListener("click",()=>navigate("perfil"));
   $("#notifications-button").addEventListener("click",()=>toast("Você está em dia com suas notificações."));
   $("#global-search").addEventListener("keydown",e=>{if(e.key==="Enter"){const q=e.target.value.trim().toLowerCase();if(!q)return;const match=Object.entries(modules).find(([id,m])=>permissions[currentUser.role].includes(id)&&m[1].toLowerCase().includes(q));if(match)navigate(match[0]);else if("painel dashboard".includes(q))navigate("dashboard");else toast("Nenhum módulo encontrado para esta busca.","error")}});
-  $("#logout").addEventListener("click",()=>{currentUser=null;localStorage.removeItem("rh-demo-role");showAuth();});
+  $("#logout").addEventListener("click",()=>{currentUser=null;localStorage.removeItem("rh-demo-role");$("#login-password").value="";$("#global-search").value="";setMenu(false);showAuth();});
   $(".password-toggle").addEventListener("click",()=>{const p=$("#login-password");p.type=p.type==="password"?"text":"password";$(".password-toggle").setAttribute("aria-label",p.type==="password"?"Mostrar senha":"Ocultar senha");$(".password-toggle").setAttribute("aria-pressed",String(p.type==="text"));$(".password-toggle").innerHTML=window.RHDesign.icon(p.type==="text"?"eyeoff":"eye");});
   initTheme();
   const remembered=data.accounts.find(a=>a.role===localStorage.getItem("rh-demo-role"));if(remembered){$("#remember-login").checked=true;login(remembered.email,remembered.password);}
