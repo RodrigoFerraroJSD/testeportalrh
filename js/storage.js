@@ -1,29 +1,37 @@
 (() => {
- const key = 'rhconnect-demo-employees-v1';
- const config = window.RH_FIREBASE_CONFIG || {};
- const enabled = !!(config.apiKey && config.projectId && config.appId);
- let remote;
+ const config=window.RH_FIREBASE_CONFIG||{};
+ const enabled=Boolean(config.apiKey&&config.authDomain&&config.projectId&&config.appId);
+ let client;
  async function db(){
-   if (!remote) remote = (async()=>{
-     const {initializeApp}=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
-     const auth=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
-     const fs=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
-     const app=initializeApp(config); const a=auth.getAuth(app);
-     await auth.setPersistence(a,auth.browserLocalPersistence);
-     await a.authStateReady();
-     const user=a.currentUser || (await auth.signInAnonymously(a)).user;
-     return {fs,ref:fs.collection(fs.getFirestore(app),'demoUsers',user.uid,'employees')};
-   })().catch(e=>{remote=null;throw e});
-   return remote;
+   if(!enabled)throw Error("Firebase não configurado");
+   if(!client)client=(async()=>{
+     const [app,auth,fs]=await Promise.all([
+       import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js'),
+       import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js'),
+       import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js')]);
+     const instance=app.initializeApp(config);
+     return {auth,fs,a:auth.getAuth(instance),d:fs.getFirestore(instance)};
+   })().catch(e=>{client=null;throw e});
+   return client;
  }
- window.RHStore={enabled,async load(){
-   if(!enabled) return JSON.parse(localStorage.getItem(key)||'[]');
-   const {fs,ref}=await db(); return (await fs.getDocs(ref)).docs.map(d=>d.data());
- },async add(record){
-   if(!enabled){const rows=await this.load(); const index=rows.findIndex(r=>r.email.toLowerCase()===record.email.toLowerCase());if(index<0)rows.push(record);else rows[index]=record;localStorage.setItem(key,JSON.stringify(rows));return;}
-   const {fs,ref}=await db(); await fs.setDoc(fs.doc(ref,encodeURIComponent(record.email.toLowerCase())),record);
- },async remove(email){
-   if(!enabled){const rows=await this.load();localStorage.setItem(key,JSON.stringify(rows.filter(r=>r.email.toLowerCase()!==email.toLowerCase())));return;}
-   const {fs,ref}=await db();await fs.deleteDoc(fs.doc(ref,encodeURIComponent(email.toLowerCase())));
- }};
+ async function profile(c,user){
+   if(!user||user.isAnonymous||!user.emailVerified)throw Error("Confirme seu e-mail antes de acessar.");
+   const snap=await c.fs.getDoc(c.fs.doc(c.d,'users',user.uid));
+   const p=snap.data();
+   if(!snap.exists()||!['admin','rh','colaborador'].includes(p.role)||p.active!==true)throw Error("Acesso ainda não liberado pelo RH.");
+   return {uid:user.uid,email:user.email,name:String(p.name||user.email),role:p.role,title:String(p.title||''),department:String(p.department||'')};
+ }
+ window.RHStore={enabled,
+ async login(email,password,remember){
+   const c=await db();await c.auth.setPersistence(c.a,remember?c.auth.browserLocalPersistence:c.auth.browserSessionPersistence);
+   const {user}=await c.auth.signInWithEmailAndPassword(c.a,email,password);
+   try{return await profile(c,user)}catch(e){await c.auth.signOut(c.a);throw e}
+ },
+ async restore(){const c=await db();await c.a.authStateReady();if(!c.a.currentUser)return null;try{return await profile(c,c.a.currentUser)}catch(e){await c.auth.signOut(c.a);throw e}},
+ async logout(){if(enabled){const c=await db();await c.auth.signOut(c.a)}},
+ async reset(email){const c=await db();await c.auth.sendPasswordResetEmail(c.a,email)},
+ async load(){const c=await db();return (await c.fs.getDocs(c.fs.collection(c.d,'employees'))).docs.map(d=>d.data())},
+ async add(record){const c=await db();await c.fs.setDoc(c.fs.doc(c.d,'employees',encodeURIComponent(record.email.toLowerCase())),record)},
+ async remove(email){const c=await db();await c.fs.deleteDoc(c.fs.doc(c.d,'employees',encodeURIComponent(email.toLowerCase())))}
+ };
 })();

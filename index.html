@@ -52,23 +52,11 @@
           <label class="field-label">Senha
             <span class="password-wrap"><input id="login-password" type="password" placeholder="Digite sua senha" autocomplete="current-password" required><button type="button" class="password-toggle" aria-label="Mostrar senha">◉</button></span>
           </label>
-          <div class="form-meta"><label class="check-label"><input type="checkbox" id="remember-login"> Manter conectado (demo)</label><button type="button" class="text-button" id="forgot-link">Esqueci minha senha</button></div>
+          <div class="form-meta"><label class="check-label"><input type="checkbox" id="remember-login"> Manter conectado</label><button type="button" class="text-button" id="forgot-link">Esqueci minha senha</button></div>
           <button class="primary-button full-button" type="submit">Entrar no portal <span>→</span></button>
-          <div class="form-divider"><span>ou</span></div>
-          <button class="secondary-button full-button" type="button" id="register-link">Solicitar cadastro de funcionário</button>
         </form>
-        <div class="demo-access">
-          <div class="demo-title"><span class="demo-spark">✦</span><strong>Acesso para demonstração</strong></div>
-          <p>Experimente os diferentes níveis de acesso usando uma das contas abaixo.</p>
-          <div class="demo-accounts">
-            <button type="button" class="demo-account" data-demo="colaborador"><span class="avatar avatar-blue">MC</span><span><b>Colaborador</b><small>maria@rhconnect.demo</small></span><span class="demo-arrow">↗</span></button>
-            <button type="button" class="demo-account" data-demo="rh"><span class="avatar avatar-violet">AF</span><span><b>Equipe de RH</b><small>ana@rhconnect.demo</small></span><span class="demo-arrow">↗</span></button>
-            <button type="button" class="demo-account" data-demo="admin"><span class="avatar avatar-green">RC</span><span><b>Administrador</b><small>admin@rhconnect.demo</small></span><span class="demo-arrow">↗</span></button>
-          </div>
-          <small class="demo-password">Senha demonstrativa para todas as contas: <b>123456</b></small>
-        </div>
       </div>
-      <p class="auth-legal">© 2026 RH CONNECT · Demonstração — não insira dados reais</p>
+      <p class="auth-legal">© 2026 RH CONNECT · Portal corporativo</p>
     </section>
   </main>
 
@@ -82,7 +70,7 @@
       <div class="sidebar-bottom">
         <div class="help-card"><div class="help-icon">✳</div><b>Precisa de ajuda?</b><p>Estamos aqui para apoiar você.</p><button type="button" data-module="solicitacoes">Acessar suporte <span>→</span></button></div>
         <button class="profile-button" id="profile-menu">
-          <span class="avatar avatar-blue" id="profile-avatar">MC</span><span class="profile-info"><b id="profile-name">Maria Costa</b><small id="profile-role">Colaboradora</small></span><span class="profile-more">···</span>
+          <span class="avatar avatar-blue" id="profile-avatar"></span><span class="profile-info"><b id="profile-name"> </b><small id="profile-role"> </small></span><span class="profile-more">···</span>
         </button>
       </div>
     </aside>
@@ -98,7 +86,7 @@
           <div class="search-box"><span>⌕</span><input id="global-search" aria-label="Buscar no portal" type="search" placeholder="Buscar no portal..."><kbd>⌘ K</kbd></div>
           <button class="icon-button theme-toggle" aria-label="Alternar tema" data-theme-toggle>◐</button>
           <button class="icon-button notification-button" id="notifications-button" aria-label="Notificações">♧<i></i></button>
-          <div class="topbar-avatar avatar avatar-blue" id="topbar-avatar">MC</div><button class="icon-button" id="logout" aria-label="Sair" title="Sair">↪</button>
+          <div class="topbar-avatar avatar avatar-blue" id="topbar-avatar"></div><button class="icon-button" id="logout" aria-label="Sair" title="Sair">↪</button>
         </div>
       </header>
       <div class="content-wrap">
@@ -109,7 +97,7 @@
   </main>
 
   <div id="modal-root"></div>
-  <script src="js/mock-data.js"></script>
+  
   <script src="js/firebase-config.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/design-system.js"></script>
