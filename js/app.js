@@ -36,7 +36,7 @@
 
   function toast(message,type="success"){
     const el=document.createElement("div");el.className=`toast ${type}`;el.setAttribute("role",type==="error"?"alert":"status");const symbol=document.createElement("span");symbol.className="toast-symbol";symbol.innerHTML=window.RHDesign.icon(type==="error"?"alert":"check");const copy=document.createElement("span");copy.textContent=message;el.append(symbol,copy);$("#toast-region").append(el);
-    setTimeout(()=>el.remove(),5000);
+    window.RHMotion.dismissibleToast(el);
   }
   function setTheme(theme){
     document.documentElement.dataset.theme=theme;
@@ -121,7 +121,9 @@
     $("#breadcrumb-current").textContent=labels[id]||"Meu painel";
     $("#page-content").innerHTML=id==="dashboard"?dashboard():id==="perfil"?profilePage():modulePage(id);
     if(id==="dashboard")window.RHEnterprise.bind($("#page-content"),employees,value=>{dashboardDepartment=value});
-    $("#page-content").classList.remove("page-content");void $("#page-content").offsetWidth;$("#page-content").classList.add("page-content");
+    window.RHMotion.enter($("#page-content"));
+    if(id==="dashboard")window.RHMotion.syncFilter($("#page-content"));
+    if(!dataLoaded){$("#page-content").setAttribute("aria-busy","true");$("#page-content").insertAdjacentHTML("afterbegin",window.RHMotion.skeleton());}else $("#page-content").removeAttribute("aria-busy");
     setMenu(false);
   }
   let modalReturnFocus=null;
@@ -147,7 +149,7 @@
   async function login(email,password){
     const account=data.accounts.find(a=>a.email.toLowerCase()===email.toLowerCase()&&a.password===password);
     if(!account){toast("E-mail ou senha inválidos. Confira os dados e tente novamente.","error");return}
-    currentUser={...account};if($("#remember-login").checked)localStorage.setItem("rh-demo-role",account.role);showApp();if(!dataLoaded){const page=$("#page-content");page.setAttribute("aria-busy","true");page.insertAdjacentHTML("afterbegin",'<div class="rc-loading" role="status"><span class="rc-spinner"></span> Sincronizando dados do portal…</div>');await ready.catch(()=>{});if(currentUser===null||currentUser.email!==account.email)return;page.removeAttribute("aria-busy");navigate(activeModule);}toast(`Bem-vindo(a), ${account.name.split(" ")[0]}!`);
+    currentUser={...account};if($("#remember-login").checked)localStorage.setItem("rh-demo-role",account.role);showApp();if(!dataLoaded){const page=$("#page-content");await ready.catch(()=>{});if(currentUser===null||currentUser.email!==account.email)return;page.removeAttribute("aria-busy");navigate(activeModule);}toast(`Bem-vindo(a), ${account.name.split(" ")[0]}!`);
   }
   function registerRequest(){
     openModal("Solicitar cadastro","Envie seus dados para uma futura validação da equipe de RH.",`<form id="request-form" class="modal-form"><label class="field-label wide">Nome completo<input name="name" required placeholder="Seu nome"></label><label class="field-label wide">E-mail corporativo<input name="email" type="email" required placeholder="voce@empresa.com.br"></label><label class="field-label wide">Departamento<input name="department" required placeholder="Seu departamento"></label></form>`,"Enviar solicitação",()=>{if(!$("#request-form").reportValidity())return;closeModal();toast("Solicitação de cadastro registrada nesta demonstração.")});
