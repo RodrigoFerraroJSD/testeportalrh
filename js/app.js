@@ -40,7 +40,7 @@
   function setTheme(theme){
     document.documentElement.dataset.theme=theme;
     localStorage.setItem("rhconnect-theme",theme);
-    $(".theme-toggle").forEach(b=>{b.innerHTML=window.RHDesign.icon(theme==="dark"?"sun":"moon");b.setAttribute("aria-pressed",String(theme==="dark"));b.setAttribute("aria-label",theme==="dark"?"Ativar tema claro":"Ativar tema escuro")});
+    $$(".theme-toggle").forEach(b=>{b.innerHTML=window.RHDesign.icon(theme==="dark"?"sun":"moon");b.setAttribute("aria-pressed",String(theme==="dark"));b.setAttribute("aria-label",theme==="dark"?"Ativar tema claro":"Ativar tema escuro")});
     document.querySelector('meta[name="theme-color"]').content=theme==="dark"?"#11151d":"#f5f7fb";
   }
   function initTheme(){
