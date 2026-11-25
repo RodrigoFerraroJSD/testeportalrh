@@ -1,19 +1,16 @@
-/* RH CONNECT — identidade visual oficial */
-.brand-logo{display:block;width:auto;height:auto;max-width:100%;object-fit:contain}
-.brand-logo-auth{width:min(310px,100%);max-height:150px;object-position:left center}
-.sidebar-brand{min-height:92px;display:flex;align-items:flex-start;padding:0 7px 24px}
-.sidebar-brand .brand-logo{width:178px;max-height:82px;object-position:left center}
+/* RH CONNECT — aplicação do logotipo oficial */
+.brand-logo{display:block;width:auto;height:auto;max-width:100%;object-fit:contain;background:#fff;border-radius:12px;padding:7px 9px;box-shadow:0 6px 20px rgba(12,28,52,.10)}
+.brand-logo-auth{width:min(280px,100%);max-height:132px;object-position:center}
+.sidebar-brand{min-height:88px;display:flex;align-items:flex-start;padding:0 7px 24px}
+.sidebar-brand .brand-logo{width:168px;max-height:86px}
 .mobile-brand{align-items:center;min-height:70px;margin-bottom:22px}
-.mobile-brand .brand-logo{width:178px;max-height:82px}
-.brand-logo-on-dark{display:none}
-[data-theme="dark"] .brand-logo-on-light{display:none}
-[data-theme="dark"] .brand-logo-on-dark{display:block}
+.mobile-brand .brand-logo{width:166px;max-height:86px}
 @media(max-width:900px){
-  .brand-logo-auth{width:min(250px,100%);max-height:120px}
-  .sidebar-brand{min-height:84px}
-  .sidebar-brand .brand-logo{width:160px;max-height:72px}
+ .brand-logo-auth{width:min(245px,100%);max-height:116px}
+ .sidebar-brand{min-height:82px}
+ .sidebar-brand .brand-logo{width:154px;max-height:78px}
 }
 @media(max-width:620px){
-  .mobile-brand{display:flex}
-  .mobile-brand .brand-logo{width:160px;max-height:74px}
+ .mobile-brand{display:flex}
+ .mobile-brand .brand-logo{width:158px;max-height:82px}
 }
